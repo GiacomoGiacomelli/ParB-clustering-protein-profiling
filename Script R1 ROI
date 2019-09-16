@@ -1,0 +1,76 @@
+#This script modifies cells ROI obtained from Fiji into ROI that can be used in the clustering script
+
+directory_input<-readline("where is the file? e.g.C:/Users/Elyra/ROI_folder:")
+directory<-gsub("\\", "/", directory_input, fixed=TRUE)               #working on windows so I have to invert \ to /
+setwd(directory)                                                      #setting directory
+
+fileNames <- Sys.glob("Cell*.txt")                          
+for (k in fileNames) {
+c1<-read.table(k, header=TRUE)
+NT<-data.frame()
+for (i in 1:(length(c1$X)-1)) {
+  if (c1[i,1]==c1[i+1,1] & abs(c1[i+1,2]-c1[i,2])>=2) {
+    a<-data.frame(X=rep(c1[i,1], times=(abs(c1[i+1,2]-c1[i,2])-1)),Y=0)
+    if ((c1[i+1,2]-c1[i,2])<0) {
+      if (abs(c1[i+1,2]-c1[i,2])==2) { a[2]<-(c1[i,2]-1) } 
+      else { a[2]<-seq((c1[i,2]-1),(c1[i+1,2]+1),by=-1) } 
+    } 
+    else {
+      if (abs(c1[i+1,2]-c1[i,2])==2) { a[2]<-(c1[i,2]+1) } 
+      else { a[2]<-seq((c1[i,2]+1),(c1[i+1,2]-1),by=1) }
+    }
+    NT<-rbind(NT, c1[i,], a)
+  }
+  else {
+    NT<-rbind(NT, c1[i,])    
+  }
+}
+NT<- rbind(NT, c1[length(c1$Y),]) 
+NT1<-data.frame()
+for (i in 1:(length(NT$Y)-1)) {
+  if (NT[i,2]==NT[i+1,2] & abs(NT[i+1,1]-NT[i,1])>=2) {
+    a<-data.frame(X=0, Y=rep(NT[i,2], times=(abs(NT[i+1,1]-NT[i,1])-1)))
+    if ((NT[i+1,1]-NT[i,1])<0) {
+      if (abs(NT[i+1,1]-NT[i,1])==2) { a[1]<-(NT[i,1]-1) } 
+      else { a[1]<-seq((NT[i,1]-1),(NT[i+1,1]+1),by=-1) } 
+    } 
+    else {
+      if (abs(NT[i+1,1]-NT[i,1])==2) { a[1]<-(NT[i,1]+1) } 
+      else { a[1]<-seq((NT[i,1]+1),(NT[i+1,1]-1),by=1) }
+    }
+    NT1<-rbind(NT1, NT[i,], a)
+  }
+  else {
+    NT1<-rbind(NT1, NT[i,])    
+  }
+}
+NT1<-rbind(NT1, NT[length(NT$Y),])
+
+NT2<-NT1
+if (NT1[1,1]==NT1[length(NT1$X),1] & abs(NT1[1,2]-NT1[length(NT1$X),2])>1) {
+  a<-data.frame(X=rep(NT1[1,1], times=(abs(NT1[length(NT1$X),2]-NT1[1,2])-1)),Y=0)
+  if ((NT1[length(NT1$X),2]-NT1[1,2])<0) {
+    if (abs(NT1[length(NT1$X),2]-NT1[1,2])==2) { a[2]<-(NT1[1,2]-1) } 
+    else { a[2]<-seq((NT1[1,2]-1),(NT1[length(NT1$X),2]+1),by=-1) } 
+  } 
+  else {
+    if (abs(NT1[length(NT1$X),2]-NT1[1,2])==2) { a[2]<-(NT1[1,2]+1) } 
+    else { a[2]<-seq((NT1[1,2]+1),(NT1[length(NT1$X),2]-1),by=1) }
+  }
+  NT2<-rbind(NT2, a)
+}
+
+if (NT1[1,2]==NT1[length(NT1$X),2] & abs(NT1[1,1]-NT1[length(NT1$X),1])>1) {
+  a<-data.frame(X=0, Y=rep(NT1[1,2], times=(abs(NT1[length(NT1$X),1]-NT1[1,1])-1)))
+  if ((NT1[length(NT1$X),1]-NT1[1,1])<0) {
+    if (abs(NT1[length(NT1$X),1]-NT1[1,1])==2) { a[1]<-(NT1[1,1]-1) } 
+    else { a[1]<-seq((NT1[1,1]-1),(NT1[length(NT1$X),1]+1),by=-1) } 
+  } 
+  else {
+    if (abs(NT1[length(NT1$X),1]-NT1[1,1])==2) { a[1]<-(NT1[1,1]+1) } 
+    else { a[1]<-seq((NT1[1,1]+1),(NT1[length(NT1$X),1]-1),by=1) }
+  }
+  NT2<-rbind(NT2, a)
+}
+write.table(NT2, file=paste("R",k,sep="."),sep="\t",row.names = FALSE, quote=FALSE)
+}
