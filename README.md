@@ -87,8 +87,27 @@ Script_R2P2_OpticsOptimization (Clustering via Optics):
 - Input: Channel_#_updatedtableX_partial_analysis.txt (Channel_#_updatedtableX_partial_analysis Example)
 - Output: Channel_#_updatedtableX_partial_analysis_clustering.txt (Channel_#_updatedtableX_partial_analysis_clustering Example)
 
-Channel_#_updatedtableX_partial_analysis_clustering example: (first 63 columns are the same as Channel_#_updatedtableX_partial_analysis.txt)
-- 
+Channel_#_updatedtableX_partial_analysis_clustering example: (first 63 columns are the same as Channel_#_updatedtableX_partial_analysis.txt) 
+- lv1: Name of the cluster to which the localization belongs (Optics threshold lv1)
+- lv2: Name of the cluster to which the localization belongs (Optics threshold lv2)
+- subs: Number of lv2 clusters present within the lv1 cluster (0.1 means that this localization does not belong to a lv1 cluster)
+- lv1Size: Number of localizations belonging the same lv1 cluster (0.1 means that this localization does not belong to a lv1 cluster)
+- lv2Size: Number of localizations belonging the same lv2 cluster (0.1 means that this localization does not belong to a lv2 cluster)
+- EventsXcell: Number of localizations within a cell
+- EventsXum2: Localizations density within a cell (normalized for squared micrometer)
+- Clusters50XCell: Number of clusters (threshold 50 nm) within a cell
+- Clusters50Xum2: Clusters density (threshold 50 nm) within a cell (normalized for squared micrometer)
+- Clusters40XCell: Number of clusters (threshold 40 nm) within a cell
+- Clusters40Xum2: Clusters density (threshold 40 nm) within a cell (normalized for squared micrometer)
+- Clusters30XCell: Number of clusters (threshold 30 nm) within a cell
+- Clusters30Xum2: Clusters density (threshold 30 nm) within a cell (normalized for squared micrometer)
+- Clusters20XCell: Number of clusters (threshold 20 nm) within a cell
+- Clusters20Xum2: Clusters density (threshold 20 nm) within a cell (normalized for squared micrometer)
+- Clusters10XCell: Number of clusters (threshold 10 nm) within a cell
+- Clusters10Xum2: Clusters density (threshold 10 nm) within a cell (normalized for squared micrometer)
+- Clusters5XCell: Number of clusters (threshold 5 nm) within a cell
+- Clusters5Xum2: Clusters density (threshold 5 nm) within a cell (normalized for squared micrometer)
+- UniqueCell: Identify unique cells (use filter parameter "yes" to avoid using the same cell twice while analysing)
 
 Script_R3_CBC_calculation_and_plot: Calculate the coordinate-based colocalization values of single-molecule localization data (CBC)
 fileR3
