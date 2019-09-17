@@ -1,3 +1,143 @@
-#Keep open the packages used in Script_R2P1_PALM filtering and analyis1
+#Keep open the packages used in Script_R2P1_PALM filtering and analyis1 and open:
 
-read.table(file0, file="Channel_#_updatedtableX_partial_analysis.txt",sep="\t",row.names = FALSE, quote=FALSE) 
+library("dbscan")
+library("mixtools")
+library("MASS")
+library("agricolae")
+
+############################################################################################################################################################################
+#Open a partially analysed table
+
+file0<-read.table(file0, file="..path/Channel_#_updatedtableX_partial_analysis.txt",sep="\t", header=TRUE)
+
+############################################################################################################################################################################
+#The following part is dedicated to the choice of Optics parameters
+#Visualize some cells in order to get an idea of the clustering behaviour (as a last visualized cell use an average cell)
+
+testcell<-file0[file0$CellName=="R.CellX.txt",]
+
+#test different cluster size and conditions to have a better understanding of the protein distribution (I use Clust5 and Clust10 because localizations
+#closer than 5 and 10 nm are likely to belong to the same cluster
+
+ggplot(data=testcell, aes(x=Position.X..nm.,y=Position.Y..nm.))+
+  geom_point()+
+  geom_point(data=testcell[testcell$Clust5Size>X,],color="red")+
+  geom_point(data=testcell[testcell$Clust10Size>X,],color="orange")+
+  coord_fixed()
+  
+R1<-file0
+R1$Index<-c(1:length(R1$Index))
+Rm1<-data.matrix(R1[c(5,6)])
+Rm<-data.matrix(testcell[c(5,6)])
+
+#Test optics parameters:
+#eps: maximum range tested; need to be able to include a single cell  
+#minPts: used to calculate the reachability distance; the reachability distance is the radius at which X localizations are found (where X is equal to minPts)
+#minPts is a relatively robust paramenter, increasing it smoothen the reachability plot while decreasing it makes the plot more jagged
+#minPts usually varies between 10 and 20, minPts should not be bigger than the expected cluster size
+
+#test on the whole field of view and on several single cells to test whether the thresholding is working appropriately across the cell population
+op <- optics(Rm1, eps = 3000, minPts = XX)
+opT<- optics(Rm, eps = 3000, minPts = XX)
+
+plot(op)
+abline(h=XX,col="red")                                                 #Draw the possible lv1 clustering threshold
+abline(h=XX,col="green")                                               #Draw the possible lv2 clustering threshold (This threshold should be used only if lv1 clusters present subclustering)
+plot(opT)
+abline(h=XX,col="red")                                                 #Draw the possible lv1 clustering threshold
+abline(h=XX,col="green")                                               #Draw the possible lv2 clustering threshold (This threshold should be used only if lv1 clusters present subclustering)
+opDBSCAN <- extractDBSCAN(op, eps_cl = XX)                             #Reachability treshold (according to lv1 threshold) (FOV)
+opDBSCANT <- extractDBSCAN(opT, eps_cl = XX)                           #Reachability treshold (according to lv1 threshold) (Cell)
+plot(opDBSCAN)                                                         #visualize reachability plot according to lv1 threshold (FOV)
+plot(opDBSCANT)                                                        #visualize reachability plot according to lv1 threshold (Cell)
+opDBSCAN1 <- extractDBSCAN(op, eps_cl = XX)                            #Reachability treshold (according to lv2 threshold) (FOV)
+opDBSCANT1 <- extractDBSCAN(opT, eps_cl = XX)                          #Reachability treshold (according to lv2 threshold) (Cell)
+plot(opDBSCAN1)                                                        #visualize reachability plot according to lv2 threshold (FOV)
+plot(opDBSCANT1)                                                       #visualize reachability plot according to lv2 threshold (Cell)
+hullplot(Rm1, opDBSCAN, main = "OPTICS", pch=".",asp=1)                #visualize localizations plus clustering according to lv1 threshold (FOV)
+hullplot(Rm1, opDBSCAN1, main = "OPTICS", pch=".",asp=1)               #visualize localizations plus clustering according to lv2 threshold (FOV)
+hullplot(Rm, opDBSCANT, main = "OPTICS", pch=".",asp=1)                #visualize localizations plus clustering according to lv1 threshold (Cell)
+hullplot(Rm, opDBSCANT1, main = "OPTICS", pch=".",asp=1)               #visualize localizations plus clustering according to lv2 threshold (Cell)
+
+#Once convinced of the consistency and goodness of the clustering parameters used, proceed with the table update
+
+file0[64]<-opDBSCAN$cluster
+colnames(file0)[64]<-"lv1"
+file0[65]<-opDBSCAN1$cluster
+colnames(file0)[65]<-"lv2"
+file0[66]<-0.1
+colnames(file0)[66]<-"subs"
+file0[67]<-0.1
+colnames(file0)[67]<-"lv1Size"
+file0[68]<-0.1
+colnames(file0)[68]<-"lv2Size"
+
+for (i in unique(file0[file0$lv1!=0,]$lv1)){
+  file0[file0$lv1==i,66][1]<-length(unique(file0[file0$lv1==i & file0$lv2!=0,]$lv2))
+  file0[file0$lv1==i,67][1]<-length(file0[file0$lv1==i,1])
+  for (k in unique(file0[file0$lv1!=0 & file0$lv1==i & file0$lv2!=0,65]))
+    file0[file0$lv1==i & file0$lv2==k,68][1]<-length(file0[file0$lv1==i & file0$lv2==k,68])
+}
+
+
+file0[69]<-0
+file0[70]<-0
+file0[71]<-0
+file0[72]<-0
+file0[73]<-0
+file0[74]<-0
+file0[75]<-0
+file0[76]<-0
+file0[77]<-0
+file0[78]<-0
+file0[79]<-0
+file0[80]<-0
+file0[81]<-0
+file0[82]<-0
+colnames(file0)[69]<-"EventsXcell"
+colnames(file0)[70]<-"EventsXum2"
+colnames(file0)[71]<-"Clusters50Xcell"
+colnames(file0)[72]<-"Clusters50Xum2"
+colnames(file0)[73]<-"Clusters40Xcell"
+colnames(file0)[74]<-"Clusters40Xum2"
+colnames(file0)[75]<-"Clusters30Xcell"
+colnames(file0)[76]<-"Clusters30Xum2"
+colnames(file0)[77]<-"Clusters20Xcell"
+colnames(file0)[78]<-"Clusters20Xum2"
+colnames(file0)[79]<-"Clusters10Xcell"
+colnames(file0)[80]<-"Clusters10Xum2"
+colnames(file0)[81]<-"Clusters5Xcell"
+colnames(file0)[82]<-"Clusters5Xum2"
+for (i in unique(file0$CellName)) {
+  file0[file0$CellName==i,69]<-length(file0[file0$CellName==i,1])
+  file0[file0$CellName==i,70]<-length(file0[file0$CellName==i,1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+  file0[file0$CellName==i,71]<-length(file0[file0$CellName==i & file0$Clust50Size>1 & file0$Unique50=="yes",1])
+  file0[file0$CellName==i,72]<-length(file0[file0$CellName==i & file0$Clust50Size>1 & file0$Unique50=="yes",1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+  file0[file0$CellName==i,73]<-length(file0[file0$CellName==i & file0$Clust40Size>1 & file0$Unique40=="yes",1])
+  file0[file0$CellName==i,74]<-length(file0[file0$CellName==i & file0$Clust40Size>1 & file0$Unique40=="yes",1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+  file0[file0$CellName==i,75]<-length(file0[file0$CellName==i & file0$Clust30Size>1 & file0$Unique30=="yes",1])
+  file0[file0$CellName==i,76]<-length(file0[file0$CellName==i & file0$Clust30Size>1 & file0$Unique30=="yes",1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+  file0[file0$CellName==i,77]<-length(file0[file0$CellName==i & file0$Clust20Size>1 & file0$Unique20=="yes",1])
+  file0[file0$CellName==i,78]<-length(file0[file0$CellName==i & file0$Clust20Size>1 & file0$Unique20=="yes",1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+  file0[file0$CellName==i,79]<-length(file0[file0$CellName==i & file0$Clust10Size>1 & file0$Unique10=="yes",1])
+  file0[file0$CellName==i,80]<-length(file0[file0$CellName==i & file0$Clust10Size>1 & file0$Unique10=="yes",1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+  file0[file0$CellName==i,81]<-length(file0[file0$CellName==i & file0$Clust5Size>1 & file0$Unique5=="yes",1])
+  file0[file0$CellName==i,82]<-length(file0[file0$CellName==i & file0$Clust5Size>1 & file0$Unique5=="yes",1])/(file0[file0$CellName==i,]$CellArea[1]/1000000)
+}
+
+
+
+a<-data.frame(file0$CellName[c(1)],stringsAsFactors=FALSE)                                                  #create a data frame of one row and one column containing a vector with the first cluster (it will always be unique)
+colnames(a)[1]<-"CellName"                                                                                  #Name of column is ClustName...same as table
+file0[83]<-NA
+colnames(file0)[83]<-"UniqueCell"                                                                           #rename file column (14) to Unqique, it will contain a "yes" "no" value according to whether the molecule was the first one found within the cluster
+file0[1,83]<-"yes"                                                                                          #first molecule is always unique (also, it is needed for initialization)
+for (i in 2:length(file0$Index)){if (file0$CellName[[i]]%in%a$CellName == TRUE) {file0[i,83]<-"no"} else {  #run through the file index, if the ClustName of the molecule is part of the vector a, the cluster is not unique, aka: a molecule from that cluster has already been analysed
+  a<-rbind(a,as.vector(file0$CellName[i]))                                                                  #else, add the name of the cluster to vector a
+  file0[i,83]<-"yes"                                                                                        #and write yes at the specified molecule
+}}
+
+############################################################################################################################################################################
+#Save table
+write.table(file0, file="Channel_#_updatedtableX_partial_analysis_clustering.txt",sep="\t",row.names = FALSE, quote=FALSE) 
+
