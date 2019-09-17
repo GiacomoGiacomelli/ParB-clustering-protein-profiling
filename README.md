@@ -107,12 +107,13 @@ Channel_#_updatedtableX_partial_analysis_clustering example: (first 63 columns a
 - Clusters10Xum2: Clusters density (threshold 10 nm) within a cell (normalized for squared micrometer)
 - Clusters5XCell: Number of clusters (threshold 5 nm) within a cell
 - Clusters5Xum2: Clusters density (threshold 5 nm) within a cell (normalized for squared micrometer)
-- UniqueCell: Identify unique cells (use filter parameter "yes" to avoid using the same cell twice while analysing)
+- UniqueCell: Identifies unique cells (use filter parameter "yes" to avoid using the same cell twice while analysing)
 
-Script_R3_CBC_calculation_and_plot: Calculate the coordinate-based colocalization values of single-molecule localization data (CBC)
-fileR3
-- Input: AreaListX.RData (ROIs)
-- Input: "Channel_#_flagella_drifted_filtered.txt" (PALM_filtering_output example)(one input for channel)
-- Output: pamCBC.txt (table including the Calculation of the rank correlation coefficient (Spearman) "S" and of the colocalization value for the PAmCherry molecules respective to mNeonGreen "Ca" )
-- Output: neoCBC.txt (table including the Calculation of the rank correlation coefficient (Spearman) "S" and of the colocalization value for the mNeonGreen molecules respective to PAmCherry "Ca" )
+Script_R2P3_MainClustersOnly: Main clusters analysis (plus statistic and plot examples)
+- Input: Channel_#_updatedtableX_partial_analysis_clustering.txt
+- Output: Channel_#_updatedtableX_partial_analysis_clustering_MainCL.txt
+- Output: Kruskalmc
 - Output: PLOTS
+
+Channel_#_updatedtableX_partial_analysis_clustering_MainCL example: (first 83 columns are the same as Channel_#_updatedtableX_partial_analysis_clustering.txt) 
+- MainClusters: Identifies main clusters (Biggest two lv1 clusters within a cell)(1 -> main cluster, 0 -> no)
