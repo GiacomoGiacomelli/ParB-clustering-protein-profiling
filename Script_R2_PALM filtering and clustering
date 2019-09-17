@@ -1,0 +1,451 @@
+#data analysis
+
+############################################################################################################################################################################
+#Activate necessary packages
+############################################################################################################################################################################
+
+library("ggplot2")
+library("plotrix")
+library("fields")                                           
+library("spatstat")
+library("pgirmess")
+library("RColorBrewer")
+
+############################################################################################################################################################################
+#File input and filtering
+############################################################################################################################################################################
+
+directory_input<-readline("where is the file? e.g.C:/Users/Elyra/table_folder:")
+directory<-gsub("\\", "/", directory_input, fixed=TRUE)                                                   #working on windows so I have to invert \ to /
+setwd(directory)                                                                                          #setting working directory
+dir()                                                                                                     #show directory content
+file1name<-readline("file1 name:")                                                                        #input the name of the PALM localization table file in the console after running this line
+readLines(file1name)   
+
+#Elyra PALM tables contain an embedded NULL; the length of the table is equal to the embedded NULL position minus 2
+
+file<-read.delim(file1name, header=T, nrow=XXXXX)                                                         #nrow = embedded null line position is -2
+fileR<-file[file$Channel=XX | file$Channel=XX,]                                                           #file$Channel= Channel number where PAmCherry was imaged
+
+#example of filtering (depends on fluorophore used and imaging condition - (fileR1->PAmCherry)
+fileR1<-fileR[fileR$Number.Photons>XXX & fileR$Number.Photons<XXX & fileR$PSF.half.width..nm.>XXX & fileR$PSF.half.width..nm.<XXX,]
+
+############################################################################################################################################################################
+#Invert Y because of how data are read by software + shift X and Y according to mask obtained from the Bright Field imaging
+############################################################################################################################################################################
+fileR2<-fileR1  #or fileG1 accordingly to which protein is currently being analysed ()                                           
+fileR2$Position.Y..nm.<-51200-fileR2$Position.Y..nm.     
+fileR2$Position.X..nm.<-fileR2$Position.X..nm.+XXX
+fileR2$Position.Y..nm.<-fileR2$Position.Y..nm.+XXX
+
+fx<-fileR2
+
+############################################################################################################################################################################
+#Change folder to where the R.Cell*.txt files are
+#Verify correct alignment between events and ROIs
+############################################################################################################################################################################
+
+directory_input<-readline("where is the file? e.g.C:/Users/Giacomo/Documents/phd/Elyra/RCell_folder:")
+directory<-gsub("\\", "/", directory_input, fixed=TRUE)                                                   #working on windows so I have to invert \ to /
+setwd(directory)                                                                                          #setting working directory
+dir()                                                                                                     #show directory content
+
+
+fileNames <- Sys.glob("R.Cell*.txt")
+CELLS<-data.frame()
+LISTofAREAS<-c()
+fx[14]<-NA
+fx[15]<-NA
+fx[16]<-NA
+colnames(fx)[14]<-"CellName"
+colnames(fx)[15]<-"CellDiameter"
+colnames(fx)[16]<-"CellArea"
+
+#The plot(realsA) within the  cycle shows the position of the events within the used ROIs, shift them accordingly if necessary
+
+for (i in fileNames) {
+  c1<-read.table(i, header=TRUE)
+  cx1<-(10*c1$X)
+  cy1<-(10*c1$Y)
+  poli<-list(list(x=cx1, y=cy1))
+  cm1<-owin(poly=poli)
+  pp3<-as.ppp(fx[c(5:6)],cm1)
+  realsA<-subset(pp3,cm1)
+  plot(realsA)                                  
+  if (length(realsA$x)>0){
+    for (k in 1:length(realsA$x)) {
+      fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,14]<-i
+      fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,15]<-diameter(cm1)
+      fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,16]<-area.owin(cm1)
+      CELLS<-rbind(CELLS,fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,])
+    }
+  LISTofAREAS<-c(LISTofAREAS,poli)
+  }
+}
+
+write.table(fx, file="Channel_#_updatedtableX.txt",sep="\t",row.names = FALSE, quote=FALSE)
+saveRDS(LISTofAREAS, file="AreaListX.RData")
+
+fileR2<-fx
+
+############################################################################################################################################################################
+#Exclude events lying outside the ROIs
+#Update table accordingly
+############################################################################################################################################################################
+
+pov<-owin(poly=LISTofAREAS)
+pp<-as.ppp(fileR2[c(5:6)],pov)
+reals<-subset(pp,pov)
+
+fileR3<-data.frame()
+for (i in 1:length(reals$x)) {
+  fileR3<-rbind(fileR3,fileR2[fileR2$Position.X..nm.==reals[i]$x & fileR2$Position.Y..nm.==reals[i]$y,])
+}
+
+############################################################################################################################################################################
+#Save filtered table
+#Add post table parameters to allow for import within the ZenBlack Software
+############################################################################################################################################################################
+
+write.table(fileR3, file="Channel_#_table_drifted_filtered.txt",sep="\t",row.names = FALSE, quote=FALSE) 
+line<-"                                                                                                   
+
+VoxelSizeX : 0.1000000000
+
+VoxelSizeY : 0.1000000000
+
+ResolutionX : 1.0000000000
+
+ResolutionY : 1.0000000000
+
+SizeX : 512
+
+SizeY : 512
+
+
+ROI List : "
+
+write(line, file="Channel_#_flagella_drifted_filtered.txt", append=TRUE)
+
+############################################################################################################################################################################
+file<-fileR3                                                                                              #reassign variable
+
+file$Index<-c(1:length(file$Index))                                                                       #change Index values to allow for analysis
+file0<-file                                                                                               #assign to new variable
+file1<-as.list(file0)                                                                                     #data.frame to list
+length<-c(1:length(file1$Index))                                                                          #length variable is a vector where each value is an Index value (same length as file itself)
+file1[17]<-list(length)                                                                                   #create list of lists (where number of lists is equal to number events and each member of list is a list of same length of file)
+file1[18]<-list(length)
+file1[19]<-list(length) 
+file1[20]<-list(length) 
+file1[21]<-list(length) 
+file1[22]<-list(length) 
+file1[23]<-list(length) 
+names(file1)[17]<-"Cluster"                                                                                  #naming the new list tha will contain the cluster primers
+names(file1)[18]<-"Prox50"
+names(file1)[19]<-"Prox40"
+names(file1)[20]<-"Prox30"
+names(file1)[21]<-"Prox20"
+names(file1)[22]<-"Prox10"
+names(file1)[23]<-"Prox5"
+
+b<-c()
+for (i in 1:(length(file1$Index))) {                                                                      #run through list
+  a1<-c()
+  a2<-c()
+  a3<-c()
+  a4<-c()
+  a5<-c()
+  a6<-c()
+  xcord<-file1$Position.X..nm[i]                                                                          #coordinates of each event are assigned
+  ycord<-file1$Position.Y..nm[i]
+  #create a subset of dataframe composed of events in close proximity to analysed point
+  fileT<-file0[file0$Position.X..nm.<(xcord+51) & file0$Position.X..nm.>(xcord-51) & file0$Position.Y..nm.<(ycord+51) & file0$Position.Y..nm.>(ycord-51),]
+  b<-c(b,length(file0[file0$Position.X..nm.<(xcord+25) & file0$Position.X..nm.>(xcord-25) & file0$Position.Y..nm.<(ycord+25) & file0$Position.Y..nm.>(ycord-25),1]))
+  for (k in (fileT$Index)) {                                                                              #run subset and check for distance from analysed point: is the Distance smaller than the sum of the Precisions divided by two?
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<50) {  #if distance between points is < sum of radius
+      a1<-c(a1, k)
+    }
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<40) {  #if distance between points is < sum of radius
+      a2<-c(a2, k)
+    }
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<30) {  #if distance between points is < sum of radius
+      a3<-c(a3, k)
+    }
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<20) {  #if distance between points is < sum of radius
+      a4<-c(a4, k)
+    }
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<10) {  #if distance between points is < sum of radius
+      a5<-c(a5, k)
+    }
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<5) {  #if distance between points is < sum of radius
+      a6<-c(a6, k)
+    }
+  }
+  if (length(a1)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[18]][i]<-list(a1)                                                                               ##list to position
+  }
+  if (length(a2)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[19]][i]<-list(a2)                                                                               ##list to position
+  }
+  if (length(a3)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[20]][i]<-list(a3)                                                                               ##list to position
+  }
+  if (length(a4)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[21]][i]<-list(a4)                                                                               ##list to position
+  }
+  if (length(a5)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[22]][i]<-list(a5)                                                                               ##list to position
+  }
+  if (length(a6)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[23]][i]<-list(a6)                                                                               ##list to position
+  }
+}
+
+
+file1[24]<-list(b)
+names(file1)[24]<-"Density"
+###########################################50
+
+file1[17]<-file1[18]
+
+for (i in 1:length(file1$Prox50)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[17]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[17]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[17]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[17]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[17]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[17]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[17]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+timeB1b<-Sys.time()   
+
+str(file1)
+
+
+file0[17]<-NA                                                                                             #create new column in data.frame
+file0[18]<-NA                                                                                             #create new column in data.frame
+file0[19]<-file1[24]                                                                                             #create new column in data.frame
+colnames(file0)[17]<-"Clust50Name"                                                                          #naming column 15 Cluster name
+colnames(file0)[18]<-"Clust50Size"                                                                          #naming column 16 cluster size
+colnames(file0)[19]<-"LocalDensity"                                                                       #density
+for (i in 1:length(file1$Prox50)) {                                                                         #run through list
+  name<-paste("Cluster",i,sep=".")                                                                        #dinamically change name accoring to cluster number
+  for (m in 1:length(file1[[17]][[i]])) {                                                                 
+    file0[file1[[17]][[i]][m],17]<-name                                                                   #add cluster name to column 15
+    file0[file1[[17]][[i]][m],18]<-length(file1[[17]][[i]])                                               #add cluster size to column 16 
+  }
+} 
+head(file0)
+########################################################40
+
+file1[17]<-file1[19]
+
+for (i in 1:length(file1$Prox40)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[17]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[17]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[17]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[17]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[17]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[17]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[17]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+timeB1b<-Sys.time() 
+
+file0[20]<-NA                                                                                             #create new column in data.frame
+file0[21]<-NA                                                                                             #create new column in data.frame                                                                                            #create new column in data.frame
+colnames(file0)[20]<-"Clust40Name"                                                                          #naming column 15 Cluster name
+colnames(file0)[21]<-"Clust40Size"                                                                          #naming column 16 cluster size                                                                      #density
+for (i in 1:length(file1$Prox40)) {
+  name<-paste(file0[i,17],i,sep=".")
+  for (m in 1:length(file1[[17]][[i]])) {                                                                 
+    file0[file1[[17]][[i]][m],20]<-name                                                                   #add cluster name to column 15
+    file0[file1[[17]][[i]][m],21]<-length(file1[[17]][[i]])                                               #add cluster size to column 16 
+  }
+} 
+
+########################################################30
+
+file1[17]<-file1[20]
+
+for (i in 1:length(file1$Prox30)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[17]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[17]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[17]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[17]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[17]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[17]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[17]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+timeB1b<-Sys.time() 
+
+file0[22]<-NA                                                                                             #create new column in data.frame
+file0[23]<-NA                                                                                             #create new column in data.frame                                                                                            #create new column in data.frame
+colnames(file0)[22]<-"Clust30Name"                                                                          #naming column 15 Cluster name
+colnames(file0)[23]<-"Clust30Size"                                                                          #naming column 16 cluster size                                                                      #density
+for (i in 1:length(file1$Prox40)) {
+  name<-paste(file0[i,20],i,sep=".")
+  for (m in 1:length(file1[[17]][[i]])) {                                                                 
+    file0[file1[[17]][[i]][m],22]<-name                                                                   #add cluster name to column 15
+    file0[file1[[17]][[i]][m],23]<-length(file1[[17]][[i]])                                               #add cluster size to column 16 
+  }
+} 
+
+########################################################20
+
+file1[17]<-file1[21]
+
+for (i in 1:length(file1$Prox20)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[17]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[17]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[17]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[17]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[17]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[17]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[17]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+timeB1b<-Sys.time() 
+
+file0[24]<-NA                                                                                             #create new column in data.frame
+file0[25]<-NA                                                                                             #create new column in data.frame                                                                                            #create new column in data.frame
+colnames(file0)[24]<-"Clust20Name"                                                                          #naming column 15 Cluster name
+colnames(file0)[25]<-"Clust20Size"                                                                          #naming column 16 cluster size                                                                      #density
+for (i in 1:length(file1$Prox40)) {
+  name<-paste(file0[i,22],i,sep=".")
+  for (m in 1:length(file1[[17]][[i]])) {                                                                 
+    file0[file1[[17]][[i]][m],24]<-name                                                                   #add cluster name to column 15
+    file0[file1[[17]][[i]][m],25]<-length(file1[[17]][[i]])                                               #add cluster size to column 16 
+  }
+} 
+
+########################################################10
+
+file1[17]<-file1[22]
+
+for (i in 1:length(file1$Prox10)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[17]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[17]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[17]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[17]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[17]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[17]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[17]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+timeB1b<-Sys.time() 
+
+file0[26]<-NA                                                                                             #create new column in data.frame
+file0[27]<-NA                                                                                             #create new column in data.frame                                                                                            #create new column in data.frame
+colnames(file0)[26]<-"Clust10Name"                                                                          #naming column 15 Cluster name
+colnames(file0)[27]<-"Clust10Size"                                                                          #naming column 16 cluster size                                                                      #density
+for (i in 1:length(file1$Prox40)) {
+  name<-paste(file0[i,24],i,sep=".")
+  for (m in 1:length(file1[[17]][[i]])) {                                                                 
+    file0[file1[[17]][[i]][m],26]<-name                                                                   #add cluster name to column 15
+    file0[file1[[17]][[i]][m],27]<-length(file1[[17]][[i]])                                               #add cluster size to column 16 
+  }
+} 
+
+########################################################5
+
+file1[17]<-file1[23]
+
+for (i in 1:length(file1$Prox5)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[17]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[17]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[17]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[17]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[17]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[17]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[17]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+timeB1b<-Sys.time() 
+
+file0[28]<-NA                                                                                             #create new column in data.frame
+file0[29]<-NA                                                                                             #create new column in data.frame                                                                                            #create new column in data.frame
+colnames(file0)[28]<-"Clust5Name"                                                                          #naming column 15 Cluster name
+colnames(file0)[29]<-"Clust5Size"                                                                          #naming column 16 cluster size                                                                      #density
+for (i in 1:length(file1$Prox40)) {
+  name<-paste(file0[i,26],i,sep=".")
+  for (m in 1:length(file1[[17]][[i]])) {                                                                 
+    file0[file1[[17]][[i]][m],28]<-name                                                                   #add cluster name to column 15
+    file0[file1[[17]][[i]][m],29]<-length(file1[[17]][[i]])                                               #add cluster size to column 16 
+  }
+} 
