@@ -1,6 +1,11 @@
+#Keep open the packages used in Script_R2P1_PALM and Script_R2P2_OpticsOptimization
+############################################################################################################################################################################
+#Open a FOV analysed via both Script_R2P1_PALM and Script_R2P2_OpticsOptimization
 
-dir()
-file<-read.table("parbanalysed_withsubs.txt", header=TRUE)
+file<-read.table(file0, file="..path/Channel_#_updatedtableX_partial_analysis_clustering.txt",sep="\t", header=TRUE)
+
+############################################################################################################################################################################
+
 str(file)
 file[84]<-0
 colnames(file)[84]<-"MainClusters"
@@ -14,3 +19,44 @@ for (k in unique(file$Field)){
     }
   }
 }
+
+############################################################################################################################################################################
+#Save table
+write.table(file, file="Channel_#_updatedtableX_partial_analysis_clustering_MainCL.txt",sep="\t",row.names = FALSE, quote=FALSE)
+
+#open all conditions tested and fov
+condition1fov1<-read.delim(file=path/Channel_#_updatedtableX_partial_analysis_clustering_MainCL.txt", header=TRUE)
+condition1fov2<-read.delim(file=path/Channel_#_updatedtableX_partial_analysis_clustering_MainCL.txt", header=TRUE)
+condition2fov1<-read.delim(file=path/Channel_#_updatedtableX_partial_analysis_clustering_MainCL.txt", header=TRUE)
+conditionXfovX<-...
+
+#merge fovs in single condition files
+condition1<-rbind(condition1fov1,condition1fov2,...)
+condition2<-...
+
+#Merge to a single table
+condition1[85]<-"condition1"
+colnames(condition1)[85]<-"Strain"
+condition2[85]<-"condition2"
+colnames(condition2)[85]<-"Strain"
+...
+TOT<-rbind(condition1,condition2,...)
+
+#At this point you can test the clustering behaviour via kruskalmc or plot the various parameters
+kruskalmc(TOT[TOT$MainClusters==1,]$lv1Size~TOT[TOT$MainClusters==1,]$Strain)
+kruskalmc(TOT[TOT$MainClusters==1,]$lv2Size~TOT[TOT$MainClusters==1,]$Strain)
+kruskalmc(TOT[TOT$MainClusters==1,]$subs~TOT[TOT$MainClusters==1,]$Strain)
+kruskalmc(TOT[TOT$lv1Size>0.1,]$lv1Size~TOT[TOT$lv1Size>0.1,]$Strain)
+kruskalmc(TOT[TOT$lv1Size>0.1,]$subs~TOT[TOT$lv1Size>0.1,]$Strain)
+
+png(file=paste("SubclusteringOfMainCl.png"), width=1500, height=1500, res=300)
+ggplot(data=TOT[TOT$Strain=="Condition1" & TOT$MainClusters==1,], aes(x=subs, y=..density..))+
+  geom_histogram(binwidth=1, fill="darkgreen", colour="black", alpha=0.5)+
+  geom_histogram(data=TOT[TOT$Strain=="Condition2" & TOT$MainClusters==1,], fill="yellow",colour="black", alpha=0.5, binwidth=1)+
+  theme_bw()+
+  theme(axis.title= element_text(size=30), axis.text = element_text(size=30, color="black"))+
+  xlab("Subclusters/Cluster")+
+  xlim(-0.5,8)+
+  ylim(0,0.6)
+dev.off()
+
