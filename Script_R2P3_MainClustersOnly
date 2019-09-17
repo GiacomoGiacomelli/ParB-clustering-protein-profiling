@@ -1,0 +1,16 @@
+
+dir()
+file<-read.table("parbanalysed_withsubs.txt", header=TRUE)
+str(file)
+file[84]<-0
+colnames(file)[84]<-"MainClusters"
+
+for (k in unique(file$Field)){
+  for (i in unique(file[file$Field==k,]$CellName)){
+    n <- length(file[file$Field==k & file$lv1Size!=0.1 & file$CellName==i,]$lv1Size)
+    if (n>1) {
+    cs1<-sort(file[file$Field==k & file$lv1Size!=0.1 & file$CellName==i,]$lv1Size,partial=n)[c(n-1,n)]
+    file[file$Field==k & file$CellName==i & (file$lv1Size==cs1[1] | file$lv1Size==cs1[2]),]$MainClusters<-1
+    }
+  }
+}
