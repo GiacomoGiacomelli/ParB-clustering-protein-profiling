@@ -21,7 +21,7 @@ Script_R1_ROI_mod (ROI modification script):
 - Input: ROIs obtained via Fiji -> need to be named Cell*.txt
 - Output: ROIs ready to be used for "Script_R2_PALM filtering" script -> R.Cell*.txt
 
-Script_R2P1_PALM filtering and analyis (PALM data filtering):
+Script_R2P1_PALM filtering and analyis (PALM data filtering and first part of the analysis):
 - Input: ROIs obtained from "Script_R1_ROI_mod"
 - Input: Elyra_Table_Example
 - Output: Channel_#_updatedtableX.txt (Elyra table drifted according to the ROIs)
@@ -82,6 +82,13 @@ Channel_#_updatedtableX_partial_analysis example: (first 16 columns are the same
 - MaxDens5: Maximum LocalDensity within the cluster (threshold 5 nm)
 - MinDens5: Minimum LocalDensity within the cluster (threshold 5 nm)
 - v63: empty column
+
+Script_R2P2_OpticsOptimization (Clustering via Optics):
+- Input: Channel_#_updatedtableX_partial_analysis.txt (Channel_#_updatedtableX_partial_analysis Example)
+- Output: Channel_#_updatedtableX_partial_analysis_clustering.txt (Channel_#_updatedtableX_partial_analysis_clustering Example)
+
+Channel_#_updatedtableX_partial_analysis_clustering example: (first 63 columns are the same as Channel_#_updatedtableX_partial_analysis.txt)
+- 
 
 Script_R3_CBC_calculation_and_plot: Calculate the coordinate-based colocalization values of single-molecule localization data (CBC)
 fileR3
