@@ -1,0 +1,3 @@
+#Keep open the packages used in Script_R2P1_PALM filtering and analyis1
+
+read.table(file0, file="Channel_#_updatedtableX_partial_analysis.txt",sep="\t",row.names = FALSE, quote=FALSE) 
